@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ders Planlayıcı</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 700px; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { color: #333; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        label { font-weight: bold; display: block; margin-top: 15px; color: #333; }
+        select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .result-box { margin-top: 20px; padding: 15px; border: 1px solid #00bcd4; border-radius: 5px; background: #e0f7fa; display: none; }
+        .warning-box { background-color: #fff3cd; border-left: 5px solid #ffeeba; color: #856404; padding: 12px; margin-bottom: 15px; border-radius: 4px; font-size: 0.95em; line-height: 1.4; }
+        .info-box { background-color: #d1ecf1; border-left: 5px solid #17a2b8; color: #0c5460; padding: 12px; margin-bottom: 20px; border-radius: 4px; font-size: 0.95em; line-height: 1.4; }
+        .period-group { margin-bottom: 20px; border-bottom: 2px dashed #b2ebf2; padding-bottom: 15px; }
+        .period-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .period-title { color: #00796b; margin-bottom: 10px; margin-top: 10px; border-left: 4px solid #00796b; padding-left: 8px; }
+        .free-teacher { background: #fff; margin: 8px 0; padding: 10px 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .teacher-name { font-weight: bold; font-size: 1.05em; color: #424242; }
+        .daily-total { background-color: #009688; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
+        .no-teacher { color: #d32f2f; font-style: italic; font-size: 0.95em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Ders Planlayıcı</h2>
+
+    <label for="teacherSelect">1. Dersi Olan Öğretmeni Seçin:</label>
+    <select id="teacherSelect" onchange="loadClasses()">
+        <option value="">-- Öğretmen Seç --</option>
+    </select>
+
+    <label for="classSelect">2. Gün veya ders seçin:</label>
+    <select id="classSelect" onchange="findFreeTeachers()" disabled>
+        <option value="">-- Önce Öğretmen Seçin --</option>
+    </select>
+
+    <div id="results" class="result-box"></div>
+</div>
+
+<script>
+    const csvVerisi = [
+        "43,Nihan KARACA,,,8A,,,,,8A,,,,,,8A,8A,,,,,,,8A,,,,,,,,,,,,,,,,,,,,,8A,8A,",
+        "44,Batıkan ÖZTUNALI,,,6A,6B,,,,6C,,,,V,,,6C,6B,6A,6A,,6A,,6B,6C,6C,,,,6C,6A,6B,6B,,*,*,*,*,6B,6B,6A,6A,,,6C,6C,",
+        "45,Derya ATICI,6D,6D,,,5D,,5E,5E,,,,,,5E,,,,5D,5E,5E,6D,,5D,,,,,,V,5D,5D,5E,6D,6D,,,6D,6D,,,5D,*,*,*,",
+        "46,Elif KILIÇ,8E,8E,8D,,7C,,,,,7C,7C,,,,8E,8E,8D,8D,8D,8D,V,,,7C,,8E,,8D,8D,,,,8E,8E,7C,7C,8D,8D,7C,8E,8E,*,*,*,",
+        "47,Meryem DAĞLI,5B,5B,,,5C,,5A,5A,,5A,5A,,,5C,*,*,*,*,,,,,5B,5C,,,,,V,,,5A,5B,,,5C,5C,5C,,,5B,5B,,5A,",
+        "48,Yeşim İNCE KARADAN,,8B,8B,,,,8C,8C,,,,,,,8B,8B,8C,8C,,8C,8C,8B,8B,,,,,8B,8B,,,,V,,8C,,8C,8C,,8B,,*,*,*,",
+        "49,Pelin EREN,,V,,8A,8A,,7B,7A,,7A,7A,,7B,7B,*,*,*,*,,7B,,,7A,7A,8A,8A,,8A,7B,7B,7A,,8A,8A,,,,,8A,8A,,7B,7A,,",
+        "50,İrem ALTINBAŞAK,7E,7E,7D,7D,,,6E,6E,,,,V,,,6E,7D,7D,7E,6E,,,,7E,7D,,,,,7D,,6E,6E,7E,7E,,,,,7E,6E,7D,*,*,*,",
+        "51,Çağrı ÇOKKAN,,,,6A,6A,,6B,,,5E,5D,6A,,,,,,6B,6B,,6A,,5E,5D,,,,*,*,*,*,*,,,6B,5E,5D,5D,V,,6B,6A,,5E,",
+        "52,Duygu KILIÇ,,,,,,,,,,5C,5C,6E,6E,,,5B,5B,5A,5A,5A,,6E,,5B,,,,,V,6E,5C,5C,5A,6E,,5B,,,,,,,,,",
+        "53,Meltem AYTAÇ YANIK,,8C,8C,8B,8B,,8D,8D,,,,,,,*,*,*,*,8B,,V,8C,,8D,8D,8B,,,,8D,,,8C,8C,8B,8B,,,8C,8C,,8D,8D,8B,",
+        "54,Nilay MUTLULAR,,7A,6C,,7B,,6D,6D,,6D,6C,,7A,7A,,,7B,,6D,V,,7A,,,,,,6D,6C,6C,7B,7B,7A,*,*,*,,,,,6C,7A,7B,7B,",
+        "55,Yağmur Ceren CANTÜRK,7C,7C,8E,7E,7E,,,7D,,,,7D,7D,7E,7C,,,8E,7E,8E,8E,,7D,,,V,,,,7C,7C,7E,,7D,7D,8E,,8E,8E,,7C,7E,*,*,"
+    ];
+
+    const sinifOgretmenleri = {
+        "Batıkan ÖZTUNALI": "6A",
+        "Çağrı ÇOKKAN": "6B",
+        "Meryem DAĞLI": "5B",
+        "Derya ATICI": "5D",
+        "Pelin EREN": "7A",
+        "İrem ALTINBAŞAK": "7D",
+        "Yeşim İNCE KARADAN": "8C",
+        "Elif KILIÇ": "8D"
+    };
+
+    const days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
+    const scheduleData = {};
+
+    function parseCSVData() {
+        csvVerisi.forEach(line => {
+            const cols = line.split(",");
+            const teacherName = cols[1];
+            scheduleData[teacherName] = {};
+            
+            let colIndex = 2; 
+            for(let d=0; d<5; d++) {
+                scheduleData[teacherName][days[d]] = [];
+                for(let p=0; p<9; p++) {
+                    const cellData = cols[colIndex] ? cols[colIndex].trim() : "";
+                    scheduleData[teacherName][days[d]].push(cellData);
+                    colIndex++;
+                }
+            }
+        });
+    }
+
+    window.onload = () => {
+        parseCSVData(); 
+        const teacherSelect = document.getElementById("teacherSelect");
+        for (let teacher in scheduleData) {
+            let option = document.createElement("option");
+            option.value = teacher;
+            option.text = teacher;
+            teacherSelect.appendChild(option);
+        }
+    };
+
+    function loadClasses() {
+        const teacher = document.getElementById("teacherSelect").value;
+        const classSelect = document.getElementById("classSelect");
+        const resultsBox = document.getElementById("results");
+        
+        classSelect.innerHTML = '<option value="">-- Gün veya ders seçin --</option>';
+        resultsBox.style.display = "none";
+
+        if (!teacher) {
+            classSelect.disabled = true;
+            return;
+        }
+
+        classSelect.disabled = false;
+        const schedule = scheduleData[teacher];
+
+        days.forEach(day => {
+            let activePeriods = [];
+            
+            schedule[day].forEach((lesson, index) => {
+                // V ve * işaretli dersleri yedek öğretmen aranacak ders olarak listelemiyoruz
+                if (lesson !== "" && lesson !== "V" && lesson !== "*") {
+                    activePeriods.push({ index: index, lesson: lesson });
+                }
+            });
+
+            if (activePeriods.length > 0) {
+                let optionAllDay = document.createElement("option");
+                optionAllDay.value = `TumGun-${day}`;
+                optionAllDay.text = `🌟 ${day} (Tüm Gün / Toplam ${activePeriods.length} Ders)`;
+                optionAllDay.style.fontWeight = "bold";
+                classSelect.appendChild(optionAllDay);
+
+                activePeriods.forEach(p => {
+                    let option = document.createElement("option");
+                    option.value = `${day}-${p.index}`;
+                    option.text = `--- ${day} ${p.index + 1}. Ders (${p.lesson})`;
+                    classSelect.appendChild(option);
+                });
+            }
+        });
+    }
+
+    function findFreeTeachers() {
+        const selectedValue = document.getElementById("classSelect").value;
+        const resultsBox = document.getElementById("results");
+        const absentTeacher = document.getElementById("teacherSelect").value;
+        
+        if (!selectedValue) {
+            resultsBox.style.display = "none";
+            return;
+        }
+
+        let htmlOutput = "";
+        
+        const selectedDay = selectedValue.startsWith("TumGun-") ? selectedValue.split("-")[1] : selectedValue.split("-")[0];
+
+        if (selectedValue.startsWith("TumGun-")) {
+            
+            if (["Pazartesi", "Çarşamba", "Cuma"].includes(selectedDay)) {
+                if (sinifOgretmenleri[absentTeacher]) {
+                    const sinif = sinifOgretmenleri[absentTeacher];
+                    htmlOutput += `
+                        <div class="warning-box">
+                            <strong>⚠️ DİKKAT:</strong> Seçtiğiniz ${absentTeacher}, <strong>${sinif}</strong> sınıfının rehber öğretmenidir.
+                        </div>
+                    `;
+                }
+            }
+
+            if (scheduleData[absentTeacher][selectedDay].includes("V")) {
+                htmlOutput += `
+                    <div class="info-box">
+                        <strong>ℹ️ BİLGİ:</strong> Öğretmenin o gün veli görüşme dersi bulunmaktadır.
+                    </div>
+                `;
+            }
+            
+            htmlOutput += `<h2 style="color:#00796b; border-bottom:2px solid #00796b; padding-bottom:5px; margin-top:0;">${selectedDay} Günü Genel Raporu</h2>`;
+
+            scheduleData[absentTeacher][selectedDay].forEach((lesson, periodNum) => {
+                if (lesson !== "" && lesson !== "V" && lesson !== "*") {
+                    htmlOutput += `<div class="period-group">`;
+                    htmlOutput += `<h4 class="period-title">${periodNum + 1}. Ders (${lesson}) İçin Boş Öğretmenler:</h4>`;
+                    
+                    let foundAny = false;
+                    for (let teacher in scheduleData) {
+                        if (teacher === absentTeacher) continue;
+
+                        if (scheduleData[teacher][selectedDay][periodNum] === "") {
+                            foundAny = true;
+                            const dailyTotal = calculateDailyTotal(teacher, selectedDay);
+                            htmlOutput += `
+                                <div class="free-teacher">
+                                    <span class="teacher-name">${teacher}</span>
+                                    <span class="daily-total">Günlük Ders Sayısı : ${dailyTotal}</span>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    if (!foundAny) {
+                        htmlOutput += `<p class="no-teacher">Bu saate boşta olan bölüm öğretmeni bulunamadı.</p>`;
+                    }
+                    htmlOutput += `</div>`;
+                }
+            });
+
+        } else {
+            const periodNum = parseInt(selectedValue.split("-")[1]);
+            const lesson = scheduleData[absentTeacher][selectedDay][periodNum];
+            
+            htmlOutput += `<h3 style="margin-top:0; color:#00796b;">${selectedDay} ${periodNum + 1}. Ders (${lesson}) Boş Olanlar:</h3>`;
+            let foundAny = false;
+
+            for (let teacher in scheduleData) {
+                if (teacher === absentTeacher) continue;
+
+                if (scheduleData[teacher][selectedDay][periodNum] === "") {
+                    foundAny = true;
+                    const dailyTotal = calculateDailyTotal(teacher, selectedDay);
+                    htmlOutput += `
+                        <div class="free-teacher">
+                            <span class="teacher-name">${teacher}</span>
+                            <span class="daily-total">Günlük Ders Sayısı : ${dailyTotal}</span>
+                        </div>
+                    `;
+                }
+            }
+
+            if (!foundAny) {
+                htmlOutput += `<p class="no-teacher">Bu saatte boş olan başka bölüm öğretmeni yok.</p>`;
+            }
+        }
+
+        resultsBox.innerHTML = htmlOutput;
+        resultsBox.style.display = "block";
+    }
+
+    function calculateDailyTotal(teacher, day) {
+        let count = 0;
+        scheduleData[teacher][day].forEach(lesson => {
+            // Veli görüşmesi ve boşluklar dahil edilmez
+            if (lesson !== "" && lesson !== "V" && lesson !== "*") count++;
+        });
+        return count;
+    }
+</script>
+
+</body>
+</html>
