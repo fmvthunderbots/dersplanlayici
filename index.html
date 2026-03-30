@@ -12,7 +12,8 @@
         select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
         .result-box { margin-top: 20px; padding: 15px; border: 1px solid #00bcd4; border-radius: 5px; background: #e0f7fa; display: none; }
         .warning-box { background-color: #fff3cd; border-left: 5px solid #ffeeba; color: #856404; padding: 12px; margin-bottom: 15px; border-radius: 4px; font-size: 0.95em; line-height: 1.4; }
-        .info-box { background-color: #d1ecf1; border-left: 5px solid #17a2b8; color: #0c5460; padding: 12px; margin-bottom: 20px; border-radius: 4px; font-size: 0.95em; line-height: 1.4; }
+        .info-box { background-color: #d1ecf1; border-left: 5px solid #17a2b8; color: #0c5460; padding: 12px; margin-bottom: 15px; border-radius: 4px; font-size: 0.95em; line-height: 1.4; }
+        .danger-box { background-color: #f8d7da; border-left: 5px solid #f5c6cb; color: #721c24; padding: 12px; margin-bottom: 20px; border-radius: 4px; font-size: 0.95em; line-height: 1.4; }
         .period-group { margin-bottom: 20px; border-bottom: 2px dashed #b2ebf2; padding-bottom: 15px; }
         .period-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .period-title { color: #00796b; margin-bottom: 10px; margin-top: 10px; border-left: 4px solid #00796b; padding-left: 8px; }
@@ -68,6 +69,46 @@
         "Elif KILIÇ": "8D"
     };
 
+    // Tablodan çekilen nöbet verileri
+    const nobetVerisi = {
+        "Batıkan ÖZTUNALI": {
+            "Pazartesi": "ORTAOKUL BAHÇE ve ANA GİRİŞ/ÇIKIŞ KAPISI",
+            "Salı": "ŞEMSİ EFENDİ KORİDORU (5-6. SINIFLAR)"
+        },
+        "Çağrı ÇOKKAN": {
+            "Pazartesi": "HASAN TAHSİN KORİDORU (7. SINIFLAR)",
+            "Çarşamba": "ORTAOKUL BAHÇE ve ANA GİRİŞ/ÇIKIŞ KAPISI"
+        },
+        "Meryem DAĞLI": {
+            "Pazartesi": "ŞEMSİ EFENDİ KORİDORU (5-6. SINIFLAR)",
+            "Perşembe": "ORTAOKUL BAHÇE ve ANA GİRİŞ/ÇIKIŞ KAPISI"
+        },
+        "Derya ATICI": {
+            "Salı": "ORTAOKUL BAHÇE ve ANA GİRİŞ/ÇIKIŞ KAPISI",
+            "Çarşamba": "İLKOKUL 1. SINIF BAHÇE"
+        },
+        "Yeşim İNCE KARADAN": {
+            "Pazartesi": "SELANİK KORİDORU (8. SINIFLAR)",
+            "Perşembe": "SELANİK KORİDORU (8. SINIFLAR)"
+        },
+        "Elif KILIÇ": {
+            "Çarşamba": "İLKOKUL 1. SINIF BAHÇE",
+            "Perşembe": "NAKİYYE ELGÜN KORİDORU (KANTİN)"
+        },
+        "Yağmur Ceren CANTÜRK": {
+            "Salı": "NAKİYYE ELGÜN KORİDORU (KANTİN)",
+            "Çarşamba": "NAKİYYE ELGÜN KORİDORU (KANTİN)"
+        },
+        "Meltem AYTAÇ YANIK": {
+            "Çarşamba": "ŞEMSİ EFENDİ KORİDORU (5-6. SINIFLAR)",
+            "Cuma": "ORTAOKUL BAHÇE ve ANA GİRİŞ/ÇIKIŞ KAPISI"
+        },
+        "Nilay MUTLULAR": {
+            "Salı": "HASAN TAHSİN KORİDORU (7. SINIFLAR)",
+            "Çarşamba": "İLKOKUL 2. SINIF ÖN BAHÇE"
+        }
+    };
+
     const days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
     const scheduleData = {};
 
@@ -120,7 +161,6 @@
             let activePeriods = [];
             
             schedule[day].forEach((lesson, index) => {
-                // V ve * işaretli dersleri yedek öğretmen aranacak ders olarak listelemiyoruz
                 if (lesson !== "" && lesson !== "V" && lesson !== "*") {
                     activePeriods.push({ index: index, lesson: lesson });
                 }
@@ -159,6 +199,7 @@
 
         if (selectedValue.startsWith("TumGun-")) {
             
+            // Sınıf Öğretmenliği Uyarısı
             if (["Pazartesi", "Çarşamba", "Cuma"].includes(selectedDay)) {
                 if (sinifOgretmenleri[absentTeacher]) {
                     const sinif = sinifOgretmenleri[absentTeacher];
@@ -170,10 +211,21 @@
                 }
             }
 
+            // Veli Görüşme Uyarısı
             if (scheduleData[absentTeacher][selectedDay].includes("V")) {
                 htmlOutput += `
                     <div class="info-box">
                         <strong>ℹ️ BİLGİ:</strong> Öğretmenin o gün veli görüşme dersi bulunmaktadır.
+                    </div>
+                `;
+            }
+
+            // Nöbet Uyarısı
+            if (nobetVerisi[absentTeacher] && nobetVerisi[absentTeacher][selectedDay]) {
+                const nobetYeri = nobetVerisi[absentTeacher][selectedDay];
+                htmlOutput += `
+                    <div class="danger-box">
+                        <strong>⚠️ BİLGİ:</strong> Seçtiğiniz öğretmenin bugün <strong>${nobetYeri}</strong> nöbeti bulunmaktadır.
                     </div>
                 `;
             }
@@ -242,7 +294,6 @@
     function calculateDailyTotal(teacher, day) {
         let count = 0;
         scheduleData[teacher][day].forEach(lesson => {
-            // Veli görüşmesi ve boşluklar dahil edilmez
             if (lesson !== "" && lesson !== "V" && lesson !== "*") count++;
         });
         return count;
